@@ -6,11 +6,11 @@ from sqlalchemy import create_engine
 
 
 def load_data(messages_filepath, categories_filepath):
-    messages = pd.read_csv('messages_filepath')
-    categories = pd.read_csv('categories_filepath')
+    messages = pd.read_csv(messages_filepath)
+    categories = pd.read_csv(categories_filepath)
 
 
-def clean_data(df):
+
     # merge datasets
     df = pd.merge(messages, categories, on='id')
 
@@ -79,7 +79,8 @@ def clean_data(df):
 
     return df
 
-
+def clean_data(df):
+  return df
 
 
 

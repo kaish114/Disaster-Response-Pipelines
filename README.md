@@ -1,8 +1,37 @@
-# Disaster-Response-Pipline
+# Disaster Response Pipeline Project
 
-## Project info
-This project is using data from Figure Eight to create a disaster response pipeline. In order to achieve that, an ETL pipeline was built first to clean and transfer the data. Then a Machine Learning pipeline was created for model building. Lastly, I also created a web app, which including different visualization and message classifier. The message classifier can classify any messages that you typed in. 
+## Project Description
+In this project, we will build a model to classify messages that are sent during disasters. There are 36 pre-defined categories, and examples of these categories include Aid Related, Medical Help, Search And Rescue, etc. By classifying these messages, we can allow these messages to be sent to the appropriate disaster relief agency. This project will involve the building of a basic ETL and Machine Learning pipeline to facilitate the task. This is also a multi-label classification task, since a message can belong to one or more categories. We will be working with a data set provided by [Figure Eight](https://www.figure-eight.com/) containing real messages that were sent during disaster events.
 
+Finally, this project contains a web app where you can input a message and get classification results.
+
+![Screenshot of Web App](WebApp.PNG)
+
+## File Description
+~~~~~~~
+        disaster_response_pipeline
+          |-- app
+                |-- templates
+                        |-- go.html
+                        |-- master.html
+                |-- run.py
+          |-- data
+                |-- disaster_message.csv
+                |-- disaster_categories.csv
+                |-- DisasterResponse.db
+                |-- process_data.py
+          |-- models
+                |-- classifier.pkl
+                |-- train_classifier.py
+          |-- Preparation
+                |-- categories.csv
+                |-- ETL Pipeline Preparation.ipynb
+                |-- ETL_Preparation.db
+                |-- messages.csv
+                |-- ML Pipeline Preparation.ipynb
+                |-- README
+          |-- README
+~~~~~~~
 ## Installation
 Must runing with Python 3 with libraries of numpy, pandas, sqlalchemy, re, NLTK, pickle, Sklearn, plotly and flask libraries.
 

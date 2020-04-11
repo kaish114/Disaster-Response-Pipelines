@@ -1,12 +1,9 @@
 import json
 import plotly
-import plotly.graph_objs as go
 import pandas as pd
-import re
 
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
-from nltk.stem.porter import PorterStemmer
 
 from flask import Flask
 from flask import render_template, request, jsonify
@@ -14,45 +11,23 @@ from plotly.graph_objs import Bar
 from sklearn.externals import joblib
 from sqlalchemy import create_engine
 
-import sys
-sys.path.append('..')
-from models.glove_vectorizer import GloveVectorizer
 
 app = Flask(__name__)
 
-'''
-Go to http://localhost:3001 to view the html file
-'''
 def tokenize(text):
-     # replace all non-alphabets and non-numbers with blank space
-    text = re.sub(r"[^a-zA-Z0-9]", " ", text.lower())
-    
-    # Tokenize words
     tokens = word_tokenize(text)
-    
-    # instantiate lemmatizer
     lemmatizer = WordNetLemmatizer()
-    
-    # instantiate stemmer
-    stemmer = PorterStemmer()
-    
+
     clean_tokens = []
     for tok in tokens:
-        # lemmtize token using noun as part of speech
-        clean_tok = lemmatizer.lemmatize(tok)
-        # lemmtize token using verb as part of speech
-        clean_tok = lemmatizer.lemmatize(clean_tok, pos='v')
-        # stem token
-        clean_tok = stemmer.stem(clean_tok)
-        # strip whitespace and append clean token to array
-        clean_tokens.append(clean_tok.strip())
-        
-    return clean_tokens
+        clean_tok = lemmatizer.lemmatize(tok).lower().strip()
+        clean_tokens.append(clean_tok)
 
+    return clean_tokens
 
 # load data
 engine = create_engine('sqlite:///../data/DisasterResponse.db')
-df = pd.read_sql_table('disaster_messages', engine)
+df = pd.read_sql_table('DisasterResponse', engine)
 
 # load model
 model = joblib.load("../models/classifier.pkl")
@@ -68,15 +43,19 @@ def index():
     genre_counts = df.groupby('genre').count()['message']
     genre_names = list(genre_counts.index)
     
-    cat_counts_sorted =  df.iloc[:,4:].sum().sort_values(ascending=False)
-    cat_names = list(cat_counts_sorted.index)
-    cat_counts = list(cat_counts_sorted)
+    # category data for plotting
+    categories =  df[df.columns[4:]]
+    cate_counts = (categories.mean()*categories.shape[0]).sort_values(ascending=False)
+    cate_names = list(cate_counts.index)
+    
+    # Plotting of Categories Distribution in Direct Genre
+    direct_cate = df[df.genre == 'direct']
+    direct_cate_counts = (direct_cate.mean()*direct_cate.shape[0]).sort_values(ascending=False)
+    direct_cate_names = list(direct_cate_counts.index)
     
     # create visuals
     # TODO: Below is an example - modify to create your own visuals
     graphs = [
-        
-        # Graph 1
         {
             'data': [
                 Bar(
@@ -95,13 +74,12 @@ def index():
                 }
             }
         },
-        
-        # Graph 2
+        # category plotting (Visualization#2)
         {
             'data': [
                 Bar(
-                    x=cat_names,
-                    y=cat_counts
+                    x=cate_names,
+                    y=cate_counts
                 )
             ],
 
@@ -112,14 +90,29 @@ def index():
                 },
                 'xaxis': {
                     'title': "Categories"
+                }
+            }
+            
+        },
+        # Categories Distribution in Direct Genre (Visualization#3)
+        {
+            'data': [
+                Bar(
+                    x=direct_cate_names,
+                    y=direct_cate_counts
+                )
+            ],
+
+            'layout': {
+                'title': 'Categories Distribution in Direct Genre',
+                'yaxis': {
+                    'title': "Count"
                 },
-                'margin':{
-                    'b':200
-                },
-                'automargin':True
-            }        
+                'xaxis': {
+                    'title': "Categories in Direct Genre"
+                }
+            }
         }
-        
     ]
     
     # encode plotly graphs in JSON

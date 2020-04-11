@@ -1,9 +1,12 @@
 import json
 import plotly
+import plotly.graph_objs as go
 import pandas as pd
+import re
 
 from nltk.stem import WordNetLemmatizer
 from nltk.tokenize import word_tokenize
+from nltk.stem.porter import PorterStemmer
 
 from flask import Flask
 from flask import render_template, request, jsonify
@@ -11,26 +14,48 @@ from plotly.graph_objs import Bar
 from sklearn.externals import joblib
 from sqlalchemy import create_engine
 
+import sys
+sys.path.append('..')
+from models.glove_vectorizer import GloveVectorizer
 
 app = Flask(__name__)
 
+'''
+Go to http://localhost:3001 to view the html file
+'''
 def tokenize(text):
+     # replace all non-alphabets and non-numbers with blank space
+    text = re.sub(r"[^a-zA-Z0-9]", " ", text.lower())
+    
+    # Tokenize words
     tokens = word_tokenize(text)
+    
+    # instantiate lemmatizer
     lemmatizer = WordNetLemmatizer()
-
+    
+    # instantiate stemmer
+    stemmer = PorterStemmer()
+    
     clean_tokens = []
     for tok in tokens:
-        clean_tok = lemmatizer.lemmatize(tok).lower().strip()
-        clean_tokens.append(clean_tok)
-
+        # lemmtize token using noun as part of speech
+        clean_tok = lemmatizer.lemmatize(tok)
+        # lemmtize token using verb as part of speech
+        clean_tok = lemmatizer.lemmatize(clean_tok, pos='v')
+        # stem token
+        clean_tok = stemmer.stem(clean_tok)
+        # strip whitespace and append clean token to array
+        clean_tokens.append(clean_tok.strip())
+        
     return clean_tokens
 
+
 # load data
-engine = create_engine('sqlite:///../data/YourDatabaseName.db')
-df = pd.read_sql_table('YourTableName', engine)
+engine = create_engine('sqlite:///../data/DisasterResponse.db')
+df = pd.read_sql_table('disaster_messages', engine)
 
 # load model
-model = joblib.load("../models/your_model_name.pkl")
+model = joblib.load("../models/classifier.pkl")
 
 
 # index webpage displays cool visuals and receives user input text for model
@@ -43,9 +68,15 @@ def index():
     genre_counts = df.groupby('genre').count()['message']
     genre_names = list(genre_counts.index)
     
+    cat_counts_sorted =  df.iloc[:,4:].sum().sort_values(ascending=False)
+    cat_names = list(cat_counts_sorted.index)
+    cat_counts = list(cat_counts_sorted)
+    
     # create visuals
     # TODO: Below is an example - modify to create your own visuals
     graphs = [
+        
+        # Graph 1
         {
             'data': [
                 Bar(
@@ -63,7 +94,32 @@ def index():
                     'title': "Genre"
                 }
             }
+        },
+        
+        # Graph 2
+        {
+            'data': [
+                Bar(
+                    x=cat_names,
+                    y=cat_counts
+                )
+            ],
+
+            'layout': {
+                'title': 'Distribution of Message Categories',
+                'yaxis': {
+                    'title': "Count"
+                },
+                'xaxis': {
+                    'title': "Categories"
+                },
+                'margin':{
+                    'b':200
+                },
+                'automargin':True
+            }        
         }
+        
     ]
     
     # encode plotly graphs in JSON

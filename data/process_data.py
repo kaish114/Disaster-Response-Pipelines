@@ -1,93 +1,92 @@
-# import libraries
-
-import pandas as pd
-import numpy as np
 import sys
+import numpy as np
+import pandas as pd
 from sqlalchemy import create_engine
 
-
 def load_data(messages_filepath, categories_filepath):
+    """
+    Load csv file containing messages specified by the path messages_filepath
+    and categories csv specified by the path categories_filepath.
+    
+    INPUTS:
+        messages_filepath - the path where the messages csv is located
+        categories_filepath - the path where the categories csv is located
+    RETURNS:
+        df - the dataframe concatenating both the message and categories 
+                csv files
+    """
     messages = pd.read_csv(messages_filepath)
     categories = pd.read_csv(categories_filepath)
+    df = pd.merge(messages, categories, how='left', on='id')
+    
+    return df
 
 
-
-    # merge datasets
-    df = pd.merge(messages, categories, on='id')
-
-    #Split categories into separate category columns
-    '''
-    Split the values in the categories column on the ; character so that each value becomes 
-    a separate column. You'll find this method very helpful! Make sure to set expand=True.
-    Use the first row of categories dataframe to create column names for the categories data.
-    Rename columns of categories with new column names.
-    '''
-    categories = df['categories'].str.split(pat=';', n=-1, expand=True)
-
-
+def clean_data(df):
+    """
+    Clean the disaster message dataframe. Generate the labels for message 
+    categories, clip values 2 in the related category to 1, and drop any
+    duplicated messages
+    
+    INPUTS:
+        df - the disaster messages dataframe
+    RETURNS:
+        df - the cleaned disaster messages dataframe
+    """
+    # create a dataframe of the 36 individual category columns
+    categories = df['categories'].str.split(pat=';', expand=True)
+    
     # select the first row of the categories dataframe
-    row = categories.iloc[0, 0:]
+    row = categories.iloc[0,:]
 
     # use this row to extract a list of new column names for categories.
-    # one way is to apply a lambda function that takes everything 
-    # up to the second to last character of each string with slicing
-    category_colnames = list(map(lambda x: x[:-2], row))
+    # apply a lambda function that takes everything up to the second 
+    # to last character of each string with slicing
+    category_colnames = row.apply(lambda x: x[:-2])
     
     # rename the columns of `categories`
     categories.columns = category_colnames
-
-
-    '''
-    Convert category values to just numbers 0 or 1.
-    Iterate through the category columns in df to keep only the last character of 
-    each string (the 1 or 0). For example, related-0 becomes 0, related-1 becomes 1. 
-    Convert the string to a numeric value.
-    You can perform normal string actions on Pandas Series, like indexing, by including .str after 
-    the Series. You may need to first convert the Series to be of type string, which you can do with astype(str).
-    '''
-
+    
     for column in categories:
         # set each value to be the last character of the string
-        categories[column] = categories[column].str[-1:]
-        
-        
+        categories[column] = categories[column].str[-1]
+    
         # convert column from string to numeric
         categories[column] = categories[column].astype(int)
-
-    categories.replace(2, 1, inplace = True)
-    #Replace categories column in df with new category columns.
-    '''
-    Drop the categories column from the df dataframe since it is no longer needed.
-    Concatenate df and categories data frames.
-    '''
+        
+    # clip the value 2 in related column to 1
+    categories = categories.clip(0,1)
+    
     # drop the original categories column from `df`
-    df = df.drop(['categories'], axis = 1)
+    df.drop('categories', axis=1, inplace=True)
+    
     # concatenate the original dataframe with the new `categories` dataframe
-    df = pd.concat([df, categories], axis=1)
-
-
-
-    #Remove duplicates.
-    '''
-    Check how many duplicates are in this dataset.
-    Drop the duplicates.
-    Confirm duplicates were removed.
-    '''
-    # check number of duplicates
-    #df.duplicated(subset='message').sum()
+    df = pd.concat((df, categories), axis=1)
+    
     # drop duplicates
-    df.drop_duplicates(subset='message', inplace=True)
-
+    df.drop_duplicates(inplace=True)
+    
     return df
-
-def clean_data(df):
-  return df
-
 
 
 def save_data(df, database_filename):
+    """
+    Save the disaster messages dataframe into a SQLite database.
+    
+    INPUTS:
+        df - the disaster messages dataframe
+        database_filename - the path to store the SQLite database
+    """
+    # connect to the data base
     engine = create_engine('sqlite:///'+database_filename)
-    df.to_sql('DisasterResponse', engine, index=False, if_exists='replace')  
+
+    conn = engine.connect()
+
+    # Save dataframe to sql table
+    df.to_sql('disaster_messages', engine, index=False, if_exists='replace')
+
+    conn.close()
+    engine.dispose()
 
 
 def main():
